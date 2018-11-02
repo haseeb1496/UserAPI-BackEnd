@@ -139,7 +139,7 @@ var routes = function(){
                     }
                     else
                     {
-                        res.send(200).send(user);
+                        res.send(200);
                         db.close();
                     }
 
