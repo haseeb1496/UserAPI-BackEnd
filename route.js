@@ -39,25 +39,55 @@ var routes = function(){
         })
         .get(function(req,res){
 
-
             mongo_client.connect(url, function(err, db){
 
                 if(err)
                     throw err;
 
                 var dbo = db.db('usersdb');
-                dbo.collection('Users').find().toArray(function(err, users){
+
+                if(req.query.age && req.query.op)
+                {
+                    age = parseInt(req.query.age);
+                    q = {};
+
+                    if (req.query.op == 'lt')
+                        q = {age: {$lt : age}};
+                    if (req.query.op == 'lte')
+                        q = {age: {$lte : age}};
+                    if (req.query.op == 'gt')
+                        q = {age: {$gt : age}};
+                    if (req.query.op == 'gte')
+                        q = {age: {$gte : age}};
+                    if (req.query.op == 'eq')
+                        q = {age: {$eq : age}};
+                    if (req.query.op == 'ne')
+                        q = {age: {$ne : age}};
+
+                    dbo.collection('Users').find(q).toArray(function(err, users){
 
                     if(err)
                         res.status(500).send(err);
                     else
                     {
                         res.json(users);
-                        console.log('Records:', users.length);
+                        console.log(users);
                         db.close();
                     }
-
                 });
+                }
+                else {
+                    dbo.collection('Users').find().toArray(function (err, users) {
+
+                        if (err)
+                            res.status(500).send(err);
+                        else {
+                            res.json(users);
+                            db.close();
+                        }
+
+                    });
+                }
 
             });
         });
@@ -100,7 +130,7 @@ var routes = function(){
                 var dbo = db.db('usersdb');
                 var searchId = new mongo.ObjectId(req.params.userID);
 
-                dbo.collection('Users').update({'_id': searchId}, {'name': req.body.name, 'desc': req.body.desc}, function(err, user){
+                dbo.collection('Users').update({'_id': searchId}, {'firstName': req.body.firstName, 'lastName': req.body.lastName, 'age': req.body.age, 'salary': req.body.salary, 'city': req.body.city, 'address': req.body.address}, function(err, user){
 
                     if(err)
                     {
@@ -109,47 +139,9 @@ var routes = function(){
                     }
                     else
                     {
-                        res.send('Successfully Updated!');
+                        res.send(200).send(user);
                         db.close();
                     }
-
-                });
-            });
-
-        })
-        .patch(function(req, res){
-
-            mongo_client.connect(url, function(err, db){
-
-                if(err)
-                    throw err;
-
-                var dbo = db.db('usersdb');
-                var searchId = new mongo.ObjectId(req.params.userID);
-
-                dbo.collection('Users').findOne({'_id': searchId}, function(error, user){
-
-                    if(req.body._id)
-                        delete req.body._id;
-
-                    for(var n in req.body)
-                        user[n] = req.body[n];
-
-                    dbo.collection('Users').update({'_id': searchId}, user, function(err, suc){
-
-
-                        if(err)
-                        {
-                            res.status(500).send(err);
-                            throw err;
-                        }
-                        else
-                        {
-                            res.send('Successfully Updated!');
-                            db.close();
-                        }
-
-                    });
 
                 });
             });
@@ -173,8 +165,7 @@ var routes = function(){
                         throw err;
                     }
                     else
-                    {
-                        res.send('Successfully Removed!');
+                    {   res.status(200).send(user);
                         db.close();
                     }
 
@@ -182,6 +173,41 @@ var routes = function(){
             });
 
         });
+
+    router.route('/city/find')
+        .get(function (req, res){
+
+            mongo_client.connect(url, function(err, db){
+
+                if(err)
+                    throw err;
+
+                var dbo = db.db('usersdb');
+
+                dbo.collection('Users').aggregate([
+                    {
+                        $group:{
+                            _id:"$city",
+                            count:{$sum:1}
+                        }
+                    }
+                ]).toArray( function (err, user) {
+
+                    if(err)
+                    {
+                        res.status(500).send(err);
+                        throw err;
+                    }
+                    else
+                    {
+                        res.send(user);
+                        db.close();
+                    }
+
+                });
+            });
+
+        })
 
     return router;
 
